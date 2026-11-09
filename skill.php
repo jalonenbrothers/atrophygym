@@ -183,4 +183,4 @@ if (!$archived) {
     $body .= '<p style="margin-top:24px;"><a class="btn-plain" style="display:inline-block" href="skill-form.php?id=' . $id . '">Edit skill</a></p>';
 }
 
-echo pageShell(e($skill['name']) . ' — AtrophyGym', $body);
+echo pageShell($skill['name'] . ' — AtrophyGym', $body);
