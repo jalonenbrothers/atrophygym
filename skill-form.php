@@ -62,16 +62,19 @@ $submitted = false;
 
 if ($action === null && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $submitted = true;
+    $rawName = is_scalar($_POST['name'] ?? null) ? trim((string)$_POST['name']) : '';
+    $rawDesc = is_scalar($_POST['delegate_desc'] ?? null) ? trim((string)$_POST['delegate_desc']) : '';
+    $rawCad = is_scalar($_POST['cadence_days'] ?? null) ? trim((string)$_POST['cadence_days']) : '';
     $values = [
-        'name' => trim((string)($_POST['name'] ?? '')),
-        'delegate_desc' => trim((string)($_POST['delegate_desc'] ?? '')),
-        'cadence_days' => (string)($_POST['cadence_days'] ?? '7'),
+        'name' => $rawName,
+        'delegate_desc' => $rawDesc,
+        'cadence_days' => $rawCad,
     ];
     $cadence = (int)$values['cadence_days'];
     if ($values['name'] === '' || mb_strlen($values['name']) > 120) {
         $errors['name'] = 'Give the skill a name.';
     }
-    if (!ctype_digit(ltrim($values['cadence_days'], '-')) || $cadence < 1 || $cadence > 90) {
+    if (!ctype_digit($values['cadence_days'] === '' ? '' : ltrim($values['cadence_days'], '-')) || $cadence < 1 || $cadence > 90) {
         $errors['cadence_days'] = 'Cadence must be between 1 and 90 days.';
     }
     if (!$errors) {

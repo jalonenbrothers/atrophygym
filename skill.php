@@ -40,8 +40,13 @@ if ($action === 'unarchive' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 /* ---- E3: Log a rep (POST) ---- */
 $logError = null;
 if ($action === 'log' && $_SERVER['REQUEST_METHOD'] === 'POST' && !(int)$skill['archived']) {
-    $rating = isset($_POST['rating']) ? (int)$_POST['rating'] : 0;
-    $note = trim((string)($_POST['note'] ?? ''));
+    $rating = isset($_POST['rating']) ? $_POST['rating'] : 0;
+    if (is_array($rating) || !ctype_digit((string)$rating)) {
+        $rating = 0; // hostile input (array) treated as missing — no (int) cast warnings
+    } else {
+        $rating = (int)$rating;
+    }
+    $note = is_scalar($_POST['note'] ?? null) ? trim((string)$_POST['note']) : '';
     if ($rating < 1 || $rating > 5) {
         $logError = 'Pick a confidence rating first.';
     } else {

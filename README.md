@@ -21,6 +21,19 @@ vanilla HTML5/CSS — no build steps, no JS required.
 3. Run migrations/ per migrations/README.md
 4. Done — no build steps
 
+## API usage / costs
+
+None. Zero external APIs, $0.
+
+## Tests
+
+- `php tests/run.php` — unit tests (streak/due/validation math, no DB
+  needed). 26 passed.
+- `tests/e2e.sh` — end-to-end vs real Apache + MySQL 8 (requires the dev
+  containers at 127.0.0.1:18090 and an empty skills table; run from repo
+  root with bash). Covers E1–E7, 404s, XSS escaping, internal-path 404s,
+  CHECK constraint, two-step archive. 69 checks passed.
+
 ## Dev container
 ```
 docker run -d --name ag-web -p 18090:80 -v $PWD:/var/www/html php:8.3-apache

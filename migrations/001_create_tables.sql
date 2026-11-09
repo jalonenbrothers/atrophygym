@@ -20,5 +20,11 @@ CREATE TABLE IF NOT EXISTS reps (
     CONSTRAINT chk_rating CHECK (rating BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- MySQL 8.0.13+ would support CREATE INDEX IF NOT EXISTS; older MySQL does not.
--- The index is non-essential; safe to run on fresh tables (created above).
+-- Idempotent index guard (plain MySQL has no CREATE INDEX IF NOT EXISTS
+-- before 8.0.29; the conditional below keeps re-runs clean on ALL versions).
+SET @idx := (SELECT COUNT(*) FROM information_schema.statistics
+    WHERE table_schema = DATABASE() AND table_name = 'reps' AND index_name = 'idx_reps_skill');
+SET @sql := IF(@idx = 0,
+    'CREATE INDEX idx_reps_skill ON reps (skill_id, logged_at)',
+    'SELECT ''index exists, skipping''');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
