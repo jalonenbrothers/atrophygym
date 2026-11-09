@@ -1,0 +1,278 @@
+/* AtrophyGym — per UX plan §4. No build step, served as-is. */
+
+:root {
+  --bg: #FAFAF7;
+  --ink: #1A1A18;
+  --muted: #6B6B66;
+  --surface: #FFFFFF;
+  --border: #E8E6E0;
+  --accent: #2E5E4E;
+  --amber: #B45309;
+  --red: #B3261E;
+  --gray: #6B7280;
+  --flash-ok-bg: #E7F0EC;
+  --flash-err-bg: #FBEAE8;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+
+@media (min-width: 600px) {
+  main { padding: 16px 24px 64px; }
+}
+
+h1 { font-size: 24px; font-weight: 700; margin: 0 0 16px; }
+h2 { font-size: 20px; font-weight: 700; margin: 24px 0 12px; }
+h3 { font-size: 16px; font-weight: 700; margin: 24px 0 12px; }
+
+a { color: var(--accent); }
+
+/* ---- Flash bars (PHP session flash, no JS) ---- */
+.flash {
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin: 0 0 16px;
+  font-weight: 600;
+}
+.flash-ok  { background: var(--flash-ok-bg);  color: var(--accent); }
+.flash-err { background: var(--flash-err-bg); color: var(--red); }
+
+/* ---- Header ---- */
+.site-header {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+@media (min-width: 600px) { .site-header { padding: 16px 24px 0; } }
+.wordmark { font-size: 20px; font-weight: 700; color: var(--ink); text-decoration: none; }
+
+/* ---- Buttons ---- */
+button, .btn {
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.btn-plain { border: none; background: none; padding: 10px 8px; color: var(--accent); cursor: pointer; font: inherit; min-height: 44px; }
+.btn-plain:hover { text-decoration: underline; }
+.btn-danger-adjacent {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+/* ---- Streak tiles ---- */
+.streak-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.stat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 160px;
+}
+.stat-tile .label { font-size: 13px; color: var(--muted); }
+.stat-tile .num { font-size: 24px; font-weight: 700; color: var(--accent); }
+.streak-note { font-size: 13px; color: var(--muted); margin: 4px 0 16px; }
+
+/* ---- Skill cards ---- */
+.skill-list { display: flex; flex-direction: column; gap: 12px; }
+.skill-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+}
+.skill-card:hover { border-color: var(--accent); }
+.skill-card .row-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.skill-name { font-size: 20px; font-weight: 700; }
+.cadence-chip {
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.skill-meta { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+/* ---- Badges ---- */
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #fff;
+  white-space: nowrap;
+}
+.badge-overdue   { background: var(--red); }
+.badge-due       { background: var(--amber); }
+.badge-scheduled { background: var(--gray); }
+.badge-archived  { background: var(--gray); }
+
+/* ---- Empty state ---- */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+}
+.empty-state h2 { margin-top: 0; }
+.empty-state p { color: var(--muted); max-width: 440px; margin: 8px auto 24px; }
+
+/* ---- Forms ---- */
+.form-field { margin-bottom: 16px; }
+.form-field label { display: block; font-weight: 600; margin-bottom: 6px; }
+.form-field input[type="text"],
+.form-field input[type="number"],
+.form-field textarea {
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+.form-field textarea { min-height: 96px; resize: vertical; }
+.form-field input:focus-visible,
+.form-field textarea:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.field-error { color: var(--red); font-size: 14px; margin-top: 6px; }
+.helper { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+/* ---- Rating radios (vertical, big tap targets) ---- */
+.rating-list { display: flex; flex-direction: column; gap: 4px; }
+.rating-list label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fff;
+}
+.rating-list input[type="radio"] { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+.rating-list label:has(input:checked) { border-color: var(--accent); background: var(--flash-ok-bg); }
+.form-error { color: var(--red); font-weight: 600; margin: 0 0 12px; }
+
+/* ---- Curve + history ---- */
+.curve-svg { width: 100%; height: 180px; display: block; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+.curve-note { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.rep-history { display: flex; flex-direction: column; gap: 12px; }
+.rep-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+.rep-row .rep-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rep-row .rep-date { font-weight: 600; }
+.rep-row .rep-rating { color: var(--accent); font-weight: 700; }
+.rep-row .rep-note { color: var(--muted); font-style: italic; margin-top: 4px; }
+.history-note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+/* ---- Skill header (detail page) ---- */
+.skill-header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.skill-header .delegate-desc { font-style: italic; color: var(--muted); margin: 8px 0; }
+.skill-header .streak-line { margin: 8px 0; }
+.skill-header .badge-row { margin-top: 8px; }
+
+.breadcrumb { display: inline-block; min-height: 44px; line-height: 24px; text-decoration: none; padding: 10px 0; }
+
+/* ---- Card form ---- */
+.card-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  max-width: 560px;
+}
+.archive-zone {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  max-width: 560px;
+  color: var(--muted);
+}
+.archive-zone p { font-size: 14px; }
+
+/* ---- Footer ---- */
+.site-footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 32px;
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 600px) { .site-footer { padding: 24px 24px 40px; } }
+
+/* ---- Archived section ---- */
+.archived-section h2 { margin-top: 32px; }
+.archived-link { display: inline-block; margin-top: 16px; color: var(--muted); text-decoration: underline; min-height: 44px; line-height: 24px; padding: 10px 0; }
+.unarchive-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* 404 */
+.not-found p { color: var(--muted); }
+
+/* Reduced motion / small screens */
+@media (max-width: 375px) {
+  .streak-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-tile { padding: 12px; min-width: 0; }
+}
