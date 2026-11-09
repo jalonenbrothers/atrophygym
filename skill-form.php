@@ -1,149 +1,133 @@
 <?php
 declare(strict_types=1);
+/**
+ * AtrophyGym — E4 + E5 + E6: Add / edit / archive skill.
+ *  GET  skill-form.php (?id=N for edit)
+ *  POST skill-form.php            → create
+ *  POST skill-form.php?id=N       → edit
+ *  POST skill-form.php?id=N&action=archive → two-step archive (confirm=0 → confirm=1)
+ */
+require __DIR__ . '/lib/db.php';
+require __DIR__ . '/lib/helpers.php';
+require __DIR__ . '/src/Streak.php';
 
-/* E4 POST skill-form.php — Add skill
- * E5 POST skill-form.php?id=N — Edit skill
- * E6 POST skill-form.php?id=N&action=archive — Archive (two-step confirm)
- * GET: renders the form (add or edit). */
+if (session_status() !== PHP_SESSION_ACTIVE) session_start(); // before ANY output (flash)
 
-require_once __DIR__ . '/lib/db.php';
-require_once __DIR__ . '/lib/gym.php';
-require_once __DIR__ . '/lib/flash.php';
-session_start();
-
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$editing = $id > 0;
+$isEdit = false;
 $skill = null;
-
-if ($editing) {
-    $st = db()->prepare('SELECT * FROM skills WHERE id = ?');
-    $st->execute([$id]);
-    $skill = $st->fetch();
-    if (!$skill) {
+if (isset($_GET['id']) && ctype_digit((string)$_GET['id'])) {
+    $skill = skill_find((int)$_GET['id']);
+    if ($skill) $isEdit = true;
+    else {
         http_response_code(404);
-        echo pageShell('Skill not found — AtrophyGym', '<div class="not-found"><h1>Skill not found.</h1><p><a class="breadcrumb" href="index.php">&larr; Dashboard</a></p></div>');
+        ?><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Skill not found — AtrophyGym</title><link rel="stylesheet" href="assets/style.css"></head><body><div class="wrap"><p><a href="index.php" class="quiet-link">← Dashboard</a></p><h1>Skill not found.</h1></div></body></html><?php
         exit;
     }
 }
 
-$action = $_GET['action'] ?? null;
+// form state (sticky on validation errors)
+$name = $skill['name'] ?? '';
+$desc = $skill['delegate_desc'] ?? '';
+$cadence = (string)($skill['cadence_days'] ?? 7);
+$nameError = $cadenceError = '';
+$confirmArchive = false;
 
-/* ---- E6: Archive (POST, two-step inline confirm — no JS confirm dialogs) ---- */
-if ($action === 'archive' && $_SERVER['REQUEST_METHOD'] === 'POST' && $editing) {
-    $confirm = ($_POST['confirm'] ?? '0') === '1';
-    if (!$confirm) {
-        // re-render edit form with the button in "Really archive?" state
-        // (handled below via $confirmPending flag)
-        $confirmPending = true;
-    } else {
-        $u = db()->prepare('UPDATE skills SET archived = 1 WHERE id = ?');
-        $u->execute([$id]);
-        flash('Archived. Its reps are kept.');
-        header('Location: index.php', true, 303);
-        exit;
-    }
-} else {
-    $confirmPending = false;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
 
-/* ---- E4/E5: Save (POST) ---- */
-$errors = [];
-$values = ['name' => '', 'delegate_desc' => '', 'cadence_days' => '7'];
-$old = ['name' => '', 'delegate_desc' => '', 'cadence_days' => '7'];
-if ($skill) {
-    $old = [
-        'name' => (string)$skill['name'],
-        'delegate_desc' => (string)($skill['delegate_desc'] ?? ''),
-        'cadence_days' => (string)$skill['cadence_days'],
-    ];
-}
-$values = $old;
-$submitted = false;
-
-if ($action === null && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $submitted = true;
-    $rawName = is_scalar($_POST['name'] ?? null) ? trim((string)$_POST['name']) : '';
-    $rawDesc = is_scalar($_POST['delegate_desc'] ?? null) ? trim((string)$_POST['delegate_desc']) : '';
-    $rawCad = is_scalar($_POST['cadence_days'] ?? null) ? trim((string)$_POST['cadence_days']) : '';
-    $values = [
-        'name' => $rawName,
-        'delegate_desc' => $rawDesc,
-        'cadence_days' => $rawCad,
-    ];
-    $cadence = (int)$values['cadence_days'];
-    if ($values['name'] === '' || mb_strlen($values['name']) > 120) {
-        $errors['name'] = 'Give the skill a name.';
-    }
-    if (!ctype_digit($values['cadence_days'] === '' ? '' : ltrim($values['cadence_days'], '-')) || $cadence < 1 || $cadence > 90) {
-        $errors['cadence_days'] = 'Cadence must be between 1 and 90 days.';
-    }
-    if (!$errors) {
-        try {
-            if ($editing) {
-                $u = db()->prepare('UPDATE skills SET name = ?, delegate_desc = ?, cadence_days = ? WHERE id = ?');
-                $u->execute([$values['name'], $values['delegate_desc'] !== '' ? $values['delegate_desc'] : null, $cadence, $id]);
-            } else {
-                $u = db()->prepare('INSERT INTO skills (name, delegate_desc, cadence_days) VALUES (?, ?, ?)');
-                $u->execute([$values['name'], $values['delegate_desc'] !== '' ? $values['delegate_desc'] : null, $cadence]);
-                $id = (int)db()->lastInsertId();
-            }
-        } catch (PDOException $ex) {
-            http_response_code(500);
-            echo pageShell('AtrophyGym', '<div class="flash flash-err" role="alert">Something broke on our side. Try again.</div>');
-            exit;
+    // --- E6: archive (two-step, no JS) ---
+    if ($isEdit && $action === 'archive') {
+        if (($_POST['confirm'] ?? '0') !== '1') {
+            $confirmArchive = true; // re-render edit form with "Really archive? Tap again"
+            $name = $_POST['name'] ?? $name;
+            $desc = $_POST['delegate_desc'] ?? $desc;
+            $cadence = (string)($_POST['cadence_days'] ?? $cadence);
+        } else {
+            $st = db()->prepare('UPDATE skills SET archived = 1 WHERE id = ?');
+            $st->execute([(int)$skill['id']]);
+            flash_set('Archived. Its reps are kept.');
+            redirect('index.php');
         }
-        flash('Skill saved.');
-        header('Location: skill.php?id=' . $id, true, 303);
-        exit;
-    }
-}
-if ($confirmPending) {
-    // keep old values on the re-rendered confirm form
-    $values = $old;
-}
-
-/* ---- Render form ---- */
-$heading = $editing ? 'Edit skill' : 'New skill';
-$body = '<p><a class="breadcrumb" href="' . ($editing ? 'skill.php?id=' . $id : 'index.php') . '">&larr; ' . ($editing ? 'Back to skill' : 'Dashboard') . '</a></p>';
-$body .= '<h1>' . $heading . '</h1><form class="card-form" method="post" action="' . ($editing ? 'skill-form.php?id=' . $id : 'skill-form.php') . '" novalidate>';
-
-$errName = isset($errors['name']) ? '<div class="field-error">' . e($errors['name']) . '</div>' : '';
-$errCad = isset($errors['cadence_days']) ? '<div class="field-error">' . e($errors['cadence_days']) . '</div>' : '';
-
-$body .= '<div class="form-field">
-  <label for="name">Name</label>
-  <input type="text" id="name" name="name" maxlength="120" required placeholder="e.g. Writing first drafts" value="' . e($values['name']) . '">
-  ' . $errName . '
-</div>
-<div class="form-field">
-  <label for="delegate_desc">What do you delegate to AI?</label>
-  <textarea id="delegate_desc" name="delegate_desc" placeholder="e.g. I let AI draft every email and post &mdash; I only edit.">' . e($values['delegate_desc']) . '</textarea>
-</div>
-<div class="form-field">
-  <label for="cadence_days">Cadence (days)</label>
-  <input type="number" id="cadence_days" name="cadence_days" min="1" max="90" step="1" value="' . e($values['cadence_days'] !== '' ? $values['cadence_days'] : '7') . '">
-  <div class="helper">How often you want to practice without AI, in days. Default weekly.</div>
-  ' . $errCad . '
-</div>
-<button type="submit" class="btn btn-primary">Save skill</button>
-</form>';
-
-// Archive zone — edit only
-if ($editing) {
-    $body .= '<div class="archive-zone">
-  <p>Archive this skill &mdash; hides it from the dashboard, keeps all reps.</p>';
-    if ($confirmPending) {
-        $body .= '<form method="post" action="skill-form.php?id=' . $id . '&action=archive">
-    <input type="hidden" name="confirm" value="1">
-    <button type="submit" class="btn btn-danger-adjacent">Really archive? Tap again</button>
-  </form>';
     } else {
-        $body .= '<form method="post" action="skill-form.php?id=' . $id . '&action=archive">
-    <input type="hidden" name="confirm" value="0">
-    <button type="submit" class="btn btn-danger-adjacent">Archive</button>
-  </form>';
+        // --- E4/E5: create / edit ---
+        $name = is_scalar($_POST['name'] ?? null) ? trim((string)$_POST['name']) : '';
+        $desc = is_scalar($_POST['delegate_desc'] ?? null) ? trim((string)$_POST['delegate_desc']) : '';
+        $cadence = is_scalar($_POST['cadence_days'] ?? null) ? trim((string)$_POST['cadence_days']) : '7';
+        $nameError = validate_name($name);
+        $cadenceError = validate_cadence($cadence);
+        if ($nameError === null && mb_strlen($name) > 120) $nameError = 'Give the skill a name.';
+        if ($nameError === null && $cadenceError === null) {
+            $cad = (int)$cadence;
+            if ($isEdit) {
+                $st = db()->prepare('UPDATE skills SET name = ?, delegate_desc = ?, cadence_days = ? WHERE id = ?');
+                $st->execute([$name, $desc, $cad, (int)$skill['id']]);
+                flash_set('Skill saved.');
+                redirect('skill.php?id=' . (int)$skill['id']);
+            } else {
+                $st = db()->prepare('INSERT INTO skills (name, delegate_desc, cadence_days, archived, created_at) VALUES (?, ?, ?, 0, NOW())');
+                $st->execute([$name, $desc, $cad]);
+                $newId = (int)db()->lastInsertId();
+                flash_set('Skill saved.');
+                redirect('skill.php?id=' . $newId);
+            }
+        }
     }
-    $body .= '</div>';
 }
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><?= $isEdit ? 'Edit skill' : 'New skill' ?> — AtrophyGym</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+<?= flash_get() ?>
+<p><a href="<?= $isEdit ? 'skill.php?id=' . (int)$skill['id'] : 'index.php' ?>" class="quiet-link">← <?= $isEdit ? h($skill['name']) : 'Dashboard' ?></a></p>
 
-echo pageShell($heading . ' — AtrophyGym', $body);
+<h1><?= $isEdit ? 'Edit skill' : 'New skill' ?></h1>
+
+<form method="post"<?= $isEdit ? ' action="skill-form.php?id=' . (int)$skill['id'] . '"' : ' action="skill-form.php"' ?>>
+  <label class="field">
+    <span class="label">Name</span>
+    <input type="text" name="name" value="<?= h($name) ?>" maxlength="120" placeholder="e.g. Writing first drafts">
+    <?php if ($nameError): ?><span class="field-error"><?= h($nameError) ?></span><?php endif ?>
+  </label>
+
+  <label class="field">
+    <span class="label">What do you delegate to AI?</span>
+    <textarea name="delegate_desc" rows="3" placeholder="e.g. I let AI draft every email and post — I only edit."><?= h($desc) ?></textarea>
+  </label>
+
+  <label class="field">
+    <span class="label">Cadence (days)</span>
+    <input type="number" name="cadence_days" value="<?= h($cadence) ?>" min="1" max="90">
+    <span class="hint muted small">How often you want to practice without AI, in days. Default weekly.</span>
+    <?php if ($cadenceError): ?><span class="field-error"><?= h($cadenceError) ?></span><?php endif ?>
+  </label>
+
+  <button type="submit" name="action" value="save" class="btn btn-primary">Save skill</button>
+
+  <?php if ($isEdit): ?>
+    <div class="danger-zone">
+      <p class="muted">Archive this skill — hides it from the dashboard, keeps all reps.</p>
+      <?php if ($confirmArchive): ?>
+        <input type="hidden" name="action" value="archive">
+        <input type="hidden" name="confirm" value="1">
+        <button type="submit" class="btn btn-danger">Really archive? Tap again</button>
+      <?php else: ?>
+        <button type="submit" name="action" value="archive" class="btn">Archive</button>
+      <?php endif ?>
+    </div>
+  <?php endif ?>
+</form>
+
+<footer class="footer muted small">
+  A gym for the skills you offloaded to AI.<br>
+  No accounts. No tracking. Just honest reps.
+</footer>
+</div>
+</body>
+</html>
